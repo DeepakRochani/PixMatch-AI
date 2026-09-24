@@ -319,7 +319,7 @@ export class DropboxProvider implements StorageProvider {
         }),
         'Content-Type': 'application/octet-stream',
       },
-      body: options.buffer,
+      body: options.buffer as unknown as BodyInit,
     });
 
     if (!res.ok) {
