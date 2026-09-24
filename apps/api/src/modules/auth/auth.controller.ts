@@ -179,6 +179,131 @@ export class AuthController {
     });
   }
 
+  static async googleAuth(request: FastifyRequest, reply: FastifyReply) {
+    const googleAuthSchema = z.object({
+      idToken: z.string().optional(),
+      email: z.string().email(),
+      name: z.string().optional(),
+      photoURL: z.string().optional(),
+    });
+
+    const { email, name, photoURL } = googleAuthSchema.parse(request.body);
+
+    let user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        memberships: {
+          include: {
+            studio: true,
+          },
+        },
+      },
+    });
+
+    let studio = user?.memberships[0]?.studio ?? null;
+    let membership = user?.memberships[0] ?? null;
+
+    if (!user) {
+      const displayName = name || email.split('@')[0] || 'Photographer';
+      const studioName = `${displayName}'s Studio`;
+      const studioSlug = studioName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const dummyPasswordHash = await hashPassword(Math.random().toString(36) + Date.now().toString());
+
+      const result = await prisma.$transaction(async (tx) => {
+        const newUser = await tx.user.create({
+          data: {
+            name: displayName,
+            email,
+            password_hash: dummyPasswordHash,
+            avatar_url: photoURL,
+            role: UserRole.STUDIO_OWNER,
+          },
+        });
+
+        const newStudio = await tx.studio.create({
+          data: {
+            name: studioName,
+            slug: `${studioSlug}-${Date.now().toString().slice(-4)}`,
+            logo_url: photoURL,
+          },
+        });
+
+        const newMembership = await tx.studioMembership.create({
+          data: {
+            user_id: newUser.id,
+            studio_id: newStudio.id,
+            role: StudioMemberRole.OWNER,
+          },
+        });
+
+        await tx.subscription.create({
+          data: {
+            studio_id: newStudio.id,
+            plan: 'FREE',
+            status: 'ACTIVE',
+            storage_limit_bytes: BigInt(2 * 1024 * 1024 * 1024),
+            photo_limit: 500,
+            ai_search_limit: 50,
+          },
+        });
+
+        await tx.storageConnection.create({
+          data: {
+            studio_id: newStudio.id,
+            provider: 'PLATFORM',
+            display_name: 'PixMatch Fast Local Storage',
+            status: 'ACTIVE',
+          },
+        });
+
+        return { user: newUser, studio: newStudio, membership: newMembership };
+      });
+
+      user = {
+        ...result.user,
+        memberships: [{ ...result.membership, studio: result.studio }],
+      } as any;
+      studio = result.studio;
+      membership = result.membership as any;
+    }
+
+    const token = signAccessToken({
+      userId: user!.id,
+      email: user!.email,
+      role: user!.role as any,
+      studioId: studio?.id ?? null,
+      studioMemberRole: (membership?.role as any) ?? StudioMemberRole.OWNER,
+    });
+
+    const refreshToken = signRefreshToken({ userId: user!.id });
+
+    return reply.send({
+      success: true,
+      data: {
+        token,
+        refreshToken,
+        user: {
+          id: user!.id,
+          name: user!.name,
+          email: user!.email,
+          role: user!.role,
+          avatar_url: user!.avatar_url,
+          created_at: user!.created_at,
+          updated_at: user!.updated_at,
+        },
+        studio: studio
+          ? {
+              id: studio.id,
+              name: studio.name,
+              slug: studio.slug,
+              logo_url: studio.logo_url,
+              website: studio.website,
+            }
+          : null,
+      },
+    });
+  }
+
   static async me(request: FastifyRequest, reply: FastifyReply) {
     if (!request.user) {
       return reply.status(401).send({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } });

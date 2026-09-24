@@ -5,5 +5,6 @@ import { authenticate } from '../../middlewares/auth.js';
 export async function authRoutes(fastify: FastifyInstance) {
   fastify.post('/login', AuthController.login);
   fastify.post('/register', AuthController.register);
+  fastify.post('/google', AuthController.googleAuth);
   fastify.get('/me', { preHandler: [authenticate] }, AuthController.me);
 }

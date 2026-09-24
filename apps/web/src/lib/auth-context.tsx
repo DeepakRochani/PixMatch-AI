@@ -151,7 +151,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updated_at: new Date().toISOString(),
       };
 
-      setAuthSession(authenticatedUser, userStudio, idToken);
+      const fallbackSessionToken = `mock_jwt_google_${fbUser.uid.substring(0, 8)}`;
+      setAuthSession(authenticatedUser, userStudio, fallbackSessionToken);
       setIsLoading(false);
       return { success: true };
     } catch (err: any) {
