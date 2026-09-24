@@ -1,6 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAnalytics, isSupported } from 'firebase/analytics';
+import { getAuth, GoogleAuthProvider, signInWithPopup, UserCredential } from 'firebase/auth';
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -16,6 +17,20 @@ export const firebaseConfig = {
 
 // Initialize Firebase (safely handles SSR and hot reloads)
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+
+// Initialize Firebase Auth
+export const auth = getAuth(app);
+
+// Initialize Google Auth Provider
+export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
+
+// Helper for Google Popup Sign-in
+export async function signInWithGooglePopup(): Promise<UserCredential> {
+  return await signInWithPopup(auth, googleProvider);
+}
 
 // Initialize Analytics conditionally (only in browser environment)
 export let analytics: ReturnType<typeof getAnalytics> | null = null;
