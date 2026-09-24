@@ -357,6 +357,16 @@ export default function StoragePage() {
           }
         }
       }, 1000);
+    } else {
+      setConnecting(false);
+      const errorMsg =
+        typeof res.error === 'string'
+          ? res.error
+          : res.error?.message || 'Failed to start OAuth flow. Please check server configuration.';
+      alert(errorMsg);
+    }
+  };
+
   const handleConnectOAuthDirect = async () => {
     setConnecting(true);
     const displayName = `${selectedProvider === 'GOOGLE_DRIVE' ? 'Google Drive' : selectedProvider === 'DROPBOX' ? 'Dropbox' : 'OneDrive'} Storage`;

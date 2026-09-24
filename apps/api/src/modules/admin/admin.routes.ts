@@ -50,6 +50,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // Storage Operations
   fastify.get('/storage', perm(AdminPermission.STORAGE_VIEW), AdminController.getStorageOperations);
+  fastify.get('/storage/oauth/google/status', perm(AdminPermission.STORAGE_VIEW), AdminController.getGoogleOAuthStatus);
 
   // Jobs
   fastify.get('/jobs', perm(AdminPermission.JOBS_VIEW), AdminController.listJobs);

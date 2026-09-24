@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { getGoogleDriveRedirectUri } from '@pixmatch/storage';
 import { AdminService } from './admin.service.js';
 import { AdminPlanService } from './plan.service.js';
 import { AdminFeatureFlagService } from './admin-feature-flag.service.js';
@@ -495,5 +496,39 @@ export class AdminController {
       return reply.status(400).send({ success: false, error: result.error });
     }
     return reply.send({ success: true, data: result.data });
+  }
+
+  // 23. Storage OAuth Status Diagnostic
+  static async getGoogleOAuthStatus(request: FastifyRequest, reply: FastifyReply) {
+    const clientId = process.env.GOOGLE_CLIENT_ID || '';
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
+    const env = process.env.NODE_ENV || 'development';
+
+    const isClientIdConfigured = Boolean(
+      clientId && clientId.trim() !== '' && clientId !== 'dummy-google-client-id'
+    );
+    const isSecretConfigured = Boolean(
+      clientSecret && clientSecret.trim() !== '' && clientSecret !== 'dummy-google-client-secret'
+    );
+
+    const origin = `${request.protocol}://${request.hostname}`;
+    let redirectUri = '';
+    try {
+      redirectUri = getGoogleDriveRedirectUri(origin);
+    } catch {
+      redirectUri = `${origin}/api/storage/oauth/google/callback`;
+    }
+
+    const clientIdSuffix = isClientIdConfigured && clientId.length >= 6 ? clientId.slice(-6) : '';
+
+    return reply.send({
+      provider: 'google',
+      configured: isClientIdConfigured && isSecretConfigured,
+      clientIdConfigured: isClientIdConfigured,
+      clientIdSuffix: clientIdSuffix || undefined,
+      redirectUri,
+      environment: env,
+      driveApiConfigured: true,
+    });
   }
 }

@@ -18,6 +18,38 @@ export interface GoogleDriveConfig {
   rootFolderId?: string;
 }
 
+// ==========================================
+// CANONICAL REDIRECT URI HELPER
+// ==========================================
+
+export function getGoogleDriveRedirectUri(customBaseUrl?: string): string {
+  // If GOOGLE_REDIRECT_URI is explicitly set in env, use it after validating
+  const envRedirect = process.env.GOOGLE_REDIRECT_URI;
+  if (envRedirect && envRedirect.trim() !== '') {
+    const trimmed = envRedirect.trim();
+    if (process.env.NODE_ENV === 'production' && !trimmed.startsWith('https://')) {
+      throw new Error('GOOGLE_OAUTH_REDIRECT_MISMATCH: In production, redirect_uri must use HTTPS');
+    }
+    return trimmed;
+  }
+
+  const isProd = process.env.NODE_ENV === 'production';
+  let baseUrl = customBaseUrl || process.env.API_URL || process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || (isProd ? 'https://pix-match-ai-web.vercel.app' : 'http://localhost:4000');
+
+  // Strip trailing slash
+  baseUrl = baseUrl.replace(/\/+$/, '');
+
+  if (isProd) {
+    if (baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1')) {
+      baseUrl = 'https://pix-match-ai-web.vercel.app';
+    } else if (baseUrl.startsWith('http://')) {
+      baseUrl = baseUrl.replace('http://', 'https://');
+    }
+  }
+
+  return `${baseUrl}/api/storage/oauth/google/callback`;
+}
+
 export class GoogleDriveProvider implements StorageProvider {
   readonly providerType = StorageProviderType.GOOGLE_DRIVE;
   private accessToken: string;
@@ -55,6 +87,22 @@ export class GoogleDriveProvider implements StorageProvider {
     const uri = typeof clientIdOrOpts === 'object' ? clientIdOrOpts.redirectUri : redirectUri!;
     const st = typeof clientIdOrOpts === 'object' ? clientIdOrOpts.state : state!;
 
+    if (!clientId || clientId.trim() === '' || clientId === 'dummy-google-client-id') {
+      throw new Error('GOOGLE_OAUTH_NOT_CONFIGURED: Google Client ID is not configured');
+    }
+
+    if (!uri || uri.trim() === '') {
+      throw new Error('GOOGLE_OAUTH_REDIRECT_MISMATCH: Redirect URI is required');
+    }
+
+    if (process.env.NODE_ENV === 'production' && !uri.startsWith('https://')) {
+      throw new Error('GOOGLE_OAUTH_REDIRECT_MISMATCH: In production, redirect_uri must use HTTPS');
+    }
+
+    if (!st || st.trim() === '') {
+      throw new Error('INVALID_STATE: OAuth state parameter is required');
+    }
+
     const scopes = [
       'https://www.googleapis.com/auth/drive.readonly',
       'https://www.googleapis.com/auth/userinfo.email',
@@ -62,14 +110,18 @@ export class GoogleDriveProvider implements StorageProvider {
     ].join(' ');
 
     const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: uri,
+      client_id: clientId.trim(),
+      redirect_uri: uri.trim(),
       response_type: 'code',
       scope: scopes,
       access_type: 'offline',
       prompt: 'consent',
       state: st,
     });
+
+    // Safe debug information only: never log client_secret or full sensitive tokens
+    const clientIdSuffix = clientId.length >= 6 ? clientId.slice(-6) : '******';
+    console.log(`[Google OAuth Safe Diagnostic] provider=google, client_id_suffix=...${clientIdSuffix}, redirect_uri=${uri}, environment=${process.env.NODE_ENV || 'development'}, state_present=${Boolean(st)}`);
 
     return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   }
@@ -93,6 +145,16 @@ export class GoogleDriveProvider implements StorageProvider {
     const rUri = typeof clientIdOrOpts === 'object' ? clientIdOrOpts.redirectUri : redirectUri!;
     const authCode = typeof clientIdOrOpts === 'object' ? clientIdOrOpts.code : code!;
 
+    if (!cId || cId.trim() === '' || cId === 'dummy-google-client-id') {
+      throw new Error('GOOGLE_OAUTH_NOT_CONFIGURED: Google Client ID is not configured');
+    }
+    if (!cSec || cSec.trim() === '' || cSec === 'dummy-google-client-secret') {
+      throw new Error('GOOGLE_OAUTH_NOT_CONFIGURED: Google Client Secret is not configured');
+    }
+    if (!authCode || authCode.trim() === '') {
+      throw new Error('MISSING_PARAMS: Authorization code is missing');
+    }
+
     const params = new URLSearchParams({
       code: authCode,
       client_id: cId,
@@ -109,7 +171,24 @@ export class GoogleDriveProvider implements StorageProvider {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Google OAuth Token Exchange Failed (${response.status}): ${errorText}`);
+      let errorJson: any = null;
+      try {
+        errorJson = JSON.parse(errorText);
+      } catch {
+        // non-json response
+      }
+
+      if (errorJson?.error === 'invalid_client' || response.status === 401) {
+        throw new Error('GOOGLE_OAUTH_CLIENT_INVALID: The Google Drive OAuth client is invalid or unavailable.');
+      }
+      if (errorJson?.error === 'redirect_uri_mismatch') {
+        throw new Error('GOOGLE_OAUTH_REDIRECT_MISMATCH: The Google Drive callback URL is not configured correctly.');
+      }
+      if (errorJson?.error === 'access_denied') {
+        throw new Error('GOOGLE_OAUTH_ACCESS_DENIED: The user cancelled Google Drive authorization.');
+      }
+
+      throw new Error(`Google OAuth Token Exchange Failed (${response.status}): ${errorJson?.error_description || errorJson?.error || 'Token exchange failed'}`);
     }
 
     const data: any = await response.json();

@@ -15,6 +15,7 @@ import {
   encryptJson,
   decryptJson,
   GoogleDriveProvider,
+  getGoogleDriveRedirectUri,
   DropboxProvider,
   OneDriveProvider,
   S3Provider,
@@ -425,9 +426,28 @@ export class StorageController {
     switch (provider.toLowerCase()) {
       case 'google':
       case 'google_drive': {
-        const clientId = process.env.GOOGLE_CLIENT_ID || 'dummy-google-client-id';
-        const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${origin}/api/storage/oauth/google/callback`;
-        authUrl = GoogleDriveProvider.getAuthorizationUrl({ clientId, redirectUri, state });
+        const clientId = process.env.GOOGLE_CLIENT_ID;
+        if (!clientId || clientId.trim() === '' || clientId === 'dummy-google-client-id') {
+          return reply.status(400).send({
+            success: false,
+            error: {
+              code: 'GOOGLE_OAUTH_NOT_CONFIGURED',
+              message: 'Google Drive connection is not configured on this server.',
+            },
+          });
+        }
+        const redirectUri = getGoogleDriveRedirectUri(origin);
+        try {
+          authUrl = GoogleDriveProvider.getAuthorizationUrl({ clientId, redirectUri, state });
+        } catch (err: any) {
+          return reply.status(400).send({
+            success: false,
+            error: {
+              code: err.message.startsWith('GOOGLE_') ? err.message.split(':')[0] : 'GOOGLE_OAUTH_CONFIG_ERROR',
+              message: err.message,
+            },
+          });
+        }
         break;
       }
       case 'dropbox': {
@@ -459,6 +479,43 @@ export class StorageController {
   }
 
   /**
+   * GET /api/storage/oauth/google/status
+   * Safe self-diagnostic endpoint returning non-sensitive OAuth status.
+   */
+  static async getGoogleOAuthStatus(request: FastifyRequest, reply: FastifyReply) {
+    const clientId = process.env.GOOGLE_CLIENT_ID || '';
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
+    const env = process.env.NODE_ENV || 'development';
+
+    const isClientIdConfigured = Boolean(
+      clientId && clientId.trim() !== '' && clientId !== 'dummy-google-client-id'
+    );
+    const isSecretConfigured = Boolean(
+      clientSecret && clientSecret.trim() !== '' && clientSecret !== 'dummy-google-client-secret'
+    );
+
+    const origin = `${request.protocol}://${request.hostname}`;
+    let redirectUri = '';
+    try {
+      redirectUri = getGoogleDriveRedirectUri(origin);
+    } catch {
+      redirectUri = `${origin}/api/storage/oauth/google/callback`;
+    }
+
+    const clientIdSuffix = isClientIdConfigured && clientId.length >= 6 ? clientId.slice(-6) : '';
+
+    return reply.send({
+      provider: 'google',
+      configured: isClientIdConfigured && isSecretConfigured,
+      clientIdConfigured: isClientIdConfigured,
+      clientIdSuffix: clientIdSuffix || undefined,
+      redirectUri,
+      environment: env,
+      driveApiConfigured: true,
+    });
+  }
+
+  /**
    * GET /api/storage/oauth/:provider/callback
    * Exchanges OAuth authorization code, encrypts tokens, and creates/updates StorageConnection.
    */
@@ -467,9 +524,13 @@ export class StorageController {
     const query = request.query as { code?: string; state?: string; error?: string };
 
     if (query.error) {
+      const isAccessDenied = query.error === 'access_denied';
       return reply.status(400).send({
         success: false,
-        error: { code: 'OAUTH_DENIED', message: `OAuth provider returned error: ${query.error}` },
+        error: {
+          code: isAccessDenied ? 'GOOGLE_OAUTH_ACCESS_DENIED' : 'OAUTH_DENIED',
+          message: isAccessDenied ? 'The user cancelled Google Drive authorization.' : `OAuth provider returned error: ${query.error}`,
+        },
       });
     }
 
@@ -502,22 +563,39 @@ export class StorageController {
         case 'google':
         case 'google_drive': {
           providerType = StorageProviderType.GOOGLE_DRIVE;
-          const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${origin}/api/storage/oauth/google/callback`;
+          const clientId = process.env.GOOGLE_CLIENT_ID;
+          const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+          if (!clientId || !clientSecret || clientId === 'dummy-google-client-id' || clientSecret === 'dummy-google-client-secret') {
+            return reply.status(400).send({
+              success: false,
+              error: {
+                code: 'GOOGLE_OAUTH_NOT_CONFIGURED',
+                message: 'Google Drive connection is not configured on this server.',
+              },
+            });
+          }
+
+          const redirectUri = getGoogleDriveRedirectUri(origin);
           tokens = await GoogleDriveProvider.exchangeCodeForTokens({
-            clientId: process.env.GOOGLE_CLIENT_ID || '',
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+            clientId,
+            clientSecret,
             redirectUri,
             code: query.code,
           });
 
           const drv = new GoogleDriveProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID || '',
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+            clientId,
+            clientSecret,
             redirectUri,
             accessToken: tokens.accessToken,
           });
           const usage = await drv.getStorageUsage().catch(() => ({ usedBytes: 0 }));
-          accountInfo = { usedBytes: usage.usedBytes, email: 'Google Drive User' };
+          accountInfo = {
+            usedBytes: usage.usedBytes,
+            email: tokens.accountEmail || 'Google Drive User',
+            accountId: tokens.accountId,
+          };
           break;
         }
         case 'dropbox': {
@@ -628,10 +706,11 @@ export class StorageController {
         },
       });
     } catch (err: any) {
-      console.error('[Storage OAuth Error]', err);
-      return reply.status(500).send({
+      console.error('[Storage OAuth Error]', err?.message || 'Token exchange error');
+      const errorCode = err.message?.startsWith('GOOGLE_') ? err.message.split(':')[0] : 'OAUTH_EXCHANGE_FAILED';
+      return reply.status(400).send({
         success: false,
-        error: { code: 'OAUTH_EXCHANGE_FAILED', message: `Failed to exchange tokens: ${err.message}` },
+        error: { code: errorCode, message: err.message || 'Failed to exchange tokens' },
       });
     }
   }

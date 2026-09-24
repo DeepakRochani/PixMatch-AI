@@ -19,6 +19,7 @@
     "test:phase3-hardening": "npx tsx tests/phase3-hardening.test.ts",
     "test:phase4a": "npx tsx tests/phase4a-storage.test.ts",
     "test:phase4a1": "npx tsx tests/phase4a1-hardening.test.ts",
+    "test:google-drive-oauth": "npx tsx tests/google-drive-oauth.test.ts",
     "test:phase4b": "npx tsx tests/phase4b-storage.test.ts",
     "test:phase5": "npx tsx tests/phase5-client-gallery.test.ts",
     "test:phase6": "npx tsx tests/phase6-gallery-management.test.ts",

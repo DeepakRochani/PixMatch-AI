@@ -7,6 +7,9 @@ export async function storageRoutes(fastify: FastifyInstance) {
   // Public OAuth callback (can be called from provider redirect)
   fastify.get('/oauth/:provider/callback', StorageController.handleOAuthCallback);
 
+  // Safe Google OAuth Status Diagnostic
+  fastify.get('/oauth/google/status', StorageController.getGoogleOAuthStatus);
+
   // Available providers metadata
   fastify.get('/providers', { preHandler: [authenticate, requireTenant] }, StorageController.listAvailableProviders);
 
