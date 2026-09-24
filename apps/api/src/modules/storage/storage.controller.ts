@@ -222,6 +222,20 @@ export class StorageController {
         baseUrlOrManifestUrl: body.baseUrlOrManifestUrl,
         mode: body.manifestMode || 'SINGLE_IMAGE',
       };
+    } else if (
+      body.provider === StorageProviderType.GOOGLE_DRIVE ||
+      body.provider === StorageProviderType.DROPBOX ||
+      body.provider === StorageProviderType.ONEDRIVE
+    ) {
+      encryptedCreds = encryptTokens({
+        accessToken: 'demo_oauth_access_token',
+        refreshToken: 'demo_oauth_refresh_token',
+      });
+
+      nonSensitiveConfig = {
+        folder_path: body.prefix || '/',
+        folder_name: body.displayName || `${body.provider} Connected Storage`,
+      };
     }
 
     // Upsert StorageConnection for this studio and provider

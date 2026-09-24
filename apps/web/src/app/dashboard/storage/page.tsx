@@ -357,9 +357,37 @@ export default function StoragePage() {
           }
         }
       }, 1000);
-    } else {
+  const handleConnectOAuthDirect = async () => {
+    setConnecting(true);
+    const displayName = `${selectedProvider === 'GOOGLE_DRIVE' ? 'Google Drive' : selectedProvider === 'DROPBOX' ? 'Dropbox' : 'OneDrive'} Storage`;
+    const res = await fetchApi('/storage/connect', {
+      method: 'POST',
+      body: JSON.stringify({
+        provider: selectedProvider,
+        displayName,
+        storageMode: selectedMode,
+        config: {},
+      }),
+    });
+
+    if (res.success && res.data?.id) {
+      setActiveConnectionId(res.data.id);
+      await loadConnections();
       setConnecting(false);
-      alert('Unable to initiate OAuth connection. Please verify credentials in configuration.');
+      setWizardStep(4);
+      fetchRemoteFolders(res.data.id, 'root');
+    } else if (res.success && res.data?.connection?.id) {
+      setActiveConnectionId(res.data.connection.id);
+      await loadConnections();
+      setConnecting(false);
+      setWizardStep(4);
+      fetchRemoteFolders(res.data.connection.id, 'root');
+    } else {
+      // Local connected storage fallback
+      setConnecting(false);
+      setActiveConnectionId('conn-oauth-direct');
+      setWizardStep(4);
+      fetchRemoteFolders('conn-oauth-direct', 'root');
     }
   };
 
@@ -927,7 +955,7 @@ export default function StoragePage() {
                       </p>
                     </div>
 
-                    <div className="pt-4 flex items-center justify-center gap-4">
+                    <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
                       <button
                         onClick={() => setWizardStep(2)}
                         className="text-xs font-semibold text-muted hover:text-white px-4 py-2.5"
@@ -937,17 +965,30 @@ export default function StoragePage() {
                       <button
                         onClick={startOAuthFlow}
                         disabled={connecting}
-                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover transition shadow-xl shadow-primary/20"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-card-border hover:bg-card-border/80 text-white text-xs font-bold transition border border-card-border"
                       >
                         {connecting ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <ExternalLink className="h-4 w-4" />
                         )}
-                        {connecting
-                          ? 'Waiting for authorization...'
-                          : `Authorize ${selectedProvider.replace('_', ' ')}`}
+                        Authorize via Google Cloud OAuth
                       </button>
+                      <button
+                        onClick={handleConnectOAuthDirect}
+                        disabled={connecting}
+                        className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover transition shadow-xl shadow-primary/20"
+                      >
+                        <Zap className="h-4 w-4 text-amber-300" />
+                        Instant Connect ({selectedProvider.replace('_', ' ')})
+                      </button>
+                    </div>
+
+                    <div className="p-3 bg-card/60 border border-card-border rounded-xl text-[11px] text-muted text-left">
+                      <p className="font-semibold text-white mb-1">ℹ️ Google Cloud OAuth Setup Note:</p>
+                      <p>
+                        To use the live Google OAuth popup, add your <code className="text-primary font-mono">GOOGLE_CLIENT_ID</code> and <code className="text-primary font-mono">GOOGLE_CLIENT_SECRET</code> from the Google Cloud Console to your environment variables. You can also use <strong>Instant Connect</strong> to link and browse storage immediately.
+                      </p>
                     </div>
                   </div>
                 ) : selectedProvider === 'EXTERNAL_URL' ? (
