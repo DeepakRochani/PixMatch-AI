@@ -1,0 +1,30 @@
+{
+  "name": "@pixmatch/database",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx src/seed.ts",
+    "db:studio": "prisma studio",
+    "build": "prisma generate && tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "clean": "rm -rf dist src/generated"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.4.1",
+    "bcryptjs": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.13.9",
+    "prisma": "^6.4.1",
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

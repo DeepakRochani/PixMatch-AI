@@ -1,0 +1,28 @@
+{
+  "name": "@pixmatch/storage",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1131.0",
+    "@aws-sdk/lib-storage": "^3.1131.0",
+    "@aws-sdk/s3-request-presigner": "^3.1131.0",
+    "@pixmatch/config": "*",
+    "@pixmatch/types": "*",
+    "mime-types": "^2.1.35",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "@types/mime-types": "^2.1.4",
+    "@types/node": "^22.13.9",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2"
+  }
+}

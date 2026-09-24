@@ -1,0 +1,9 @@
+fastapi==0.115.8
+uvicorn[standard]==0.34.0
+pydantic==2.10.6
+numpy==1.26.4
+python-multipart==0.0.20
+# Production model packages:
+# insightface==0.7.3
+# onnxruntime==1.19.2
+# opencv-python-headless==4.10.0.84

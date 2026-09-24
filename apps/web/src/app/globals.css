@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 228 30% 4%;
+    --foreground: 210 40% 98%;
+  }
+
+  body {
+    background-color: #090A0F;
+    color: #F8FAFC;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Safe Area Inset Utilities */
+.pt-safe {
+  padding-top: max(1rem, env(safe-area-inset-top));
+}
+
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.pl-safe {
+  padding-left: max(1rem, env(safe-area-inset-left));
+}
+
+.pr-safe {
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+.bottom-safe {
+  bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* Hide scrollbar for clean horizontal tab rows */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom Scrollbar for Desktop */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090A0F;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1E2333;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2D354D;
+}
+
+/* Prefers Reduced Motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
