@@ -5,31 +5,19 @@ import { requireTenant } from '../../middlewares/tenant.js';
 
 export async function aiRoutes(fastify: FastifyInstance) {
   // Public Client Selfie Search (Rate Limited to 20 requests/min per IP to protect against scraping/exhaustion)
-  fastify.post(
-    '/public/gallery/:slug/selfie-search',
-    {
-      config: {
-        rateLimit: {
-          max: 20,
-          timeWindow: '1 minute',
-        },
+  const rateLimitConfig = {
+    config: {
+      rateLimit: {
+        max: 20,
+        timeWindow: '1 minute',
       },
     },
-    AiController.searchSelfiePublic
-  );
+  };
 
-  fastify.post(
-    '/public/selfie-search',
-    {
-      config: {
-        rateLimit: {
-          max: 20,
-          timeWindow: '1 minute',
-        },
-      },
-    },
-    AiController.searchSelfiePublic
-  );
+  fastify.post('/public/gallery/:slug/selfie-search', rateLimitConfig, AiController.searchSelfiePublic);
+  fastify.post('/public/selfie-search', rateLimitConfig, AiController.searchSelfiePublic);
+  fastify.post('/selfie/search-public', rateLimitConfig, AiController.searchSelfiePublic);
+  fastify.post('/public/:slug/selfie-search', rateLimitConfig, AiController.searchSelfiePublic);
 
   // Authenticated Studio routes
   fastify.post('/search/selfie', { preHandler: [authenticate, requireTenant] }, AiController.searchSelfieAuth);

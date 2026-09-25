@@ -54,12 +54,16 @@ export const FindMyPhotosDialog: React.FC<FindMyPhotosDialogProps> = ({
     setStep('PROCESSING');
 
     try {
-      const response = await fetch('/api/v1/ai/selfie/search-public', {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '') : '';
+      const endpoint = apiBase ? `${apiBase}/v1/ai/public/selfie-search` : `/api/v1/ai/public/selfie-search`;
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           gallerySlug,
+          slug: gallerySlug,
           image: base64,
+          selfie: base64,
         }),
       });
 

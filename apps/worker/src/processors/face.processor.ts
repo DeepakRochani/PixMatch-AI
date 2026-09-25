@@ -54,16 +54,30 @@ export function computeCosineSimilarity(vecA: number[], vecB: number[]): number 
  * Deterministic ArcFace 512-dimensional vector generator fallback.
  */
 export function generateLocalFaceEmbedding(seedBuffer: Buffer, seedId = ''): number[] {
-  const hash = crypto.createHash('sha256').update(seedBuffer).update(seedId).digest();
-  const rawVec: number[] = [];
-  for (let i = 0; i < 512; i++) {
-    // Generate pseudo-gaussian distribution
-    const b1 = hash[(i * 3) % hash.length];
-    const b2 = hash[(i * 3 + 1) % hash.length];
-    const val = (b1 / 255.0 - 0.5) * 2.0 + (b2 / 255.0 - 0.5);
-    rawVec.push(val);
+  const embedding: number[] = new Array(512);
+  let sumSquares = 0;
+
+  for (let chunk = 0; chunk < 16; chunk++) {
+    const chunkHash = crypto
+      .createHash('sha256')
+      .update(seedBuffer)
+      .update(seedId)
+      .update(`:chunk:${chunk}`)
+      .digest();
+    for (let j = 0; j < 32; j++) {
+      const idx = chunk * 32 + j;
+      const rawVal = chunkHash[j];
+      const val = (rawVal / 127.5) - 1.0;
+      embedding[idx] = val;
+      sumSquares += val * val;
+    }
   }
-  return l2Normalize(rawVec);
+
+  const magnitude = Math.sqrt(sumSquares);
+  for (let i = 0; i < 512; i++) {
+    embedding[i] = embedding[i] / (magnitude || 1);
+  }
+  return embedding;
 }
 
 /**
@@ -194,6 +208,16 @@ export async function processFaceIndexing(data: FaceJobData): Promise<ProcessFac
             embedding_dimension: 512,
           },
         });
+      }
+
+      // Sync pgvector native column if pgvector extension is present
+      try {
+        await tx.$executeRawUnsafe(
+          'UPDATE face_detections SET embedding_vec = embedding::text::vector(512) WHERE photo_id = $1 AND embedding_vec IS NULL AND embedding IS NOT NULL AND cardinality(embedding) = 512',
+          photoId
+        );
+      } catch {
+        // Safe fallback if pgvector extension not present
       }
 
       // 6. Update Photo status

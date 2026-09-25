@@ -125,6 +125,9 @@ export default function StoragePage() {
     headers: '',
   });
 
+  // OAuth Error State
+  const [oauthError, setOauthError] = useState<string | null>(null);
+
   // Config Test State
   const [configTesting, setConfigTesting] = useState(false);
   const [configTestResult, setConfigTestResult] = useState<{
@@ -325,6 +328,7 @@ export default function StoragePage() {
 
   const startOAuthFlow = async () => {
     setConnecting(true);
+    setOauthError(null);
     const res = await fetchApi(
       `/storage/oauth/${selectedProvider.toLowerCase()}/authorize?storageMode=${selectedMode}`
     );
@@ -359,45 +363,18 @@ export default function StoragePage() {
       }, 1000);
     } else {
       setConnecting(false);
-      const errorMsg =
-        typeof res.error === 'string'
-          ? res.error
-          : res.error?.message || 'Failed to start OAuth flow. Please check server configuration.';
-      alert(errorMsg);
-    }
-  };
-
-  const handleConnectOAuthDirect = async () => {
-    setConnecting(true);
-    const displayName = `${selectedProvider === 'GOOGLE_DRIVE' ? 'Google Drive' : selectedProvider === 'DROPBOX' ? 'Dropbox' : 'OneDrive'} Storage`;
-    const res = await fetchApi('/storage/connect', {
-      method: 'POST',
-      body: JSON.stringify({
-        provider: selectedProvider,
-        displayName,
-        storageMode: selectedMode,
-        config: {},
-      }),
-    });
-
-    if (res.success && res.data?.id) {
-      setActiveConnectionId(res.data.id);
-      await loadConnections();
-      setConnecting(false);
-      setWizardStep(4);
-      fetchRemoteFolders(res.data.id, 'root');
-    } else if (res.success && res.data?.connection?.id) {
-      setActiveConnectionId(res.data.connection.id);
-      await loadConnections();
-      setConnecting(false);
-      setWizardStep(4);
-      fetchRemoteFolders(res.data.connection.id, 'root');
-    } else {
-      // Local connected storage fallback
-      setConnecting(false);
-      setActiveConnectionId('conn-oauth-direct');
-      setWizardStep(4);
-      fetchRemoteFolders('conn-oauth-direct', 'root');
+      const isNotConfigured =
+        res.error?.code === 'GOOGLE_OAUTH_NOT_CONFIGURED' ||
+        res.error?.message?.toLowerCase().includes('not configured');
+      if (isNotConfigured) {
+        setOauthError('NOT_CONFIGURED');
+      } else {
+        const errorMsg =
+          typeof res.error === 'string'
+            ? res.error
+            : res.error?.message || 'Failed to start OAuth flow. Please check server configuration.';
+        setOauthError(errorMsg);
+      }
     }
   };
 
@@ -965,9 +942,32 @@ export default function StoragePage() {
                       </p>
                     </div>
 
+                    {oauthError && (
+                      <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-left text-rose-300 space-y-1">
+                        <p className="font-bold flex items-center gap-1.5 text-rose-200">
+                          <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
+                          {oauthError === 'NOT_CONFIGURED'
+                            ? `${selectedProvider === 'GOOGLE_DRIVE' ? 'Google Drive' : selectedProvider.replace('_', ' ')} OAuth is not configured for this deployment.`
+                            : 'Authorization Error'}
+                        </p>
+                        <p className="text-[11px] text-rose-300/90 leading-relaxed">
+                          {oauthError === 'NOT_CONFIGURED' ? (
+                            <>
+                              Please configure <code className="font-mono bg-rose-950/50 px-1 py-0.5 rounded text-rose-200">GOOGLE_CLIENT_ID</code> and <code className="font-mono bg-rose-950/50 px-1 py-0.5 rounded text-rose-200">GOOGLE_CLIENT_SECRET</code> on the API server.
+                            </>
+                          ) : (
+                            oauthError
+                          )}
+                        </p>
+                      </div>
+                    )}
+
                     <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
                       <button
-                        onClick={() => setWizardStep(2)}
+                        onClick={() => {
+                          setOauthError(null);
+                          setWizardStep(2);
+                        }}
                         className="text-xs font-semibold text-muted hover:text-white px-4 py-2.5"
                       >
                         Back
@@ -975,29 +975,21 @@ export default function StoragePage() {
                       <button
                         onClick={startOAuthFlow}
                         disabled={connecting}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-card-border hover:bg-card-border/80 text-white text-xs font-bold transition border border-card-border"
+                        className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover transition shadow-xl shadow-primary/20"
                       >
                         {connecting ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <ExternalLink className="h-4 w-4" />
                         )}
-                        Authorize via Google Cloud OAuth
-                      </button>
-                      <button
-                        onClick={handleConnectOAuthDirect}
-                        disabled={connecting}
-                        className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover transition shadow-xl shadow-primary/20"
-                      >
-                        <Zap className="h-4 w-4 text-amber-300" />
-                        Instant Connect ({selectedProvider.replace('_', ' ')})
+                        {selectedProvider === 'GOOGLE_DRIVE' ? 'Authorize via Google Cloud OAuth' : `Authorize via ${selectedProvider.replace('_', ' ')} OAuth`}
                       </button>
                     </div>
 
                     <div className="p-3 bg-card/60 border border-card-border rounded-xl text-[11px] text-muted text-left">
                       <p className="font-semibold text-white mb-1">ℹ️ Google Cloud OAuth Setup Note:</p>
                       <p>
-                        To use the live Google OAuth popup, add your <code className="text-primary font-mono">GOOGLE_CLIENT_ID</code> and <code className="text-primary font-mono">GOOGLE_CLIENT_SECRET</code> from the Google Cloud Console to your environment variables. You can also use <strong>Instant Connect</strong> to link and browse storage immediately.
+                        To use live Google OAuth, ensure <code className="text-primary font-mono">GOOGLE_CLIENT_ID</code> and <code className="text-primary font-mono">GOOGLE_CLIENT_SECRET</code> from the Google Cloud Console are configured on the API server, with the authorized redirect URI matching your deployment.
                       </p>
                     </div>
                   </div>

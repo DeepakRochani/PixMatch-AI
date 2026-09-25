@@ -59,12 +59,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch {
         // Corrupt storage, clear
         localStorage.removeItem('pixmatch_token');
+        localStorage.removeItem('pixmatch_user');
+        localStorage.removeItem('pixmatch_studio');
+        localStorage.removeItem('pixmatch_studio_id');
       }
-    } else {
-      // Default to demo studio owner for preview ease
-      setUser(DEMO_STUDIO_OWNER);
-      setStudio(DEMO_STUDIO);
-      setToken('demo_token_lumiere');
     }
     setIsLoading(false);
   }, []);

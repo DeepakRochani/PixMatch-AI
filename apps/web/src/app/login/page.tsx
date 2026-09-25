@@ -9,8 +9,8 @@ import { useAuth } from '@/lib/auth-context';
 export default function LoginPage() {
   const router = useRouter();
   const { login, loginWithGoogle, isLoading } = useAuth();
-  const [email, setEmail] = useState('alex@lumiere.com');
-  const [password, setPassword] = useState('Password123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
@@ -164,6 +164,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@studio.com"
+                  autoComplete="email"
                   className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-background border border-card-border text-sm text-white placeholder-muted focus:outline-none focus:border-primary transition"
                 />
               </div>
@@ -182,6 +183,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
+                  autoComplete="current-password"
                   className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-background border border-card-border text-sm text-white placeholder-muted focus:outline-none focus:border-primary transition"
                 />
               </div>
