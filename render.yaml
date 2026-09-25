@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: pixmatch-api
+    runtime: node
+    plan: starter
+    region: singapore
+    buildCommand: npm install && npm --workspace=@pixmatch/database run db:generate && npm --workspace=@pixmatch/api run build
+    startCommand: node apps/api/dist/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: STORAGE_ENCRYPTION_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: AI_SERVICE_URL
+        sync: false
+      - key: APP_URL
+        value: https://pix-match-ai-web.vercel.app
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://pix-match-ai-web.vercel.app
