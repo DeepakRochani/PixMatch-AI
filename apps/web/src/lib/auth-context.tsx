@@ -54,8 +54,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (savedToken && savedUser) {
       try {
         setToken(savedToken);
-        setUser(JSON.parse(savedUser));
-        if (savedStudio) setStudio(JSON.parse(savedStudio));
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        if (savedStudio) {
+          const parsedStudio = JSON.parse(savedStudio);
+          setStudio(parsedStudio);
+          localStorage.setItem('pixmatch_studio_id', parsedStudio.id);
+        } else {
+          localStorage.removeItem('pixmatch_studio');
+          localStorage.removeItem('pixmatch_studio_id');
+        }
       } catch {
         // Corrupt storage, clear
         localStorage.removeItem('pixmatch_token');
@@ -63,6 +71,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('pixmatch_studio');
         localStorage.removeItem('pixmatch_studio_id');
       }
+    } else {
+      localStorage.removeItem('pixmatch_studio');
+      localStorage.removeItem('pixmatch_studio_id');
     }
     setIsLoading(false);
   }, []);

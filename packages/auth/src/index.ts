@@ -63,11 +63,27 @@ export function verifyAccessToken(token: string): AuthTokenPayload | null {
   // 3. Support mock/demo tokens for offline / development / demo preview modes
   if (token.startsWith('mock_') || token.startsWith('demo_') || token === 'demo_token_lumiere') {
     const isSuperAdmin = token.includes('super_admin') || token.includes('admin');
+    let dynamicStudioId = isSuperAdmin ? null : 'studio-demo-1';
+    let dynamicUserId = isSuperAdmin ? 'admin-1' : 'user-demo-1';
+
+    if (token.startsWith('mock_jwt_google_')) {
+      const suffix = token.replace('mock_jwt_google_', '');
+      if (suffix) {
+        dynamicStudioId = `studio-${suffix}`;
+        dynamicUserId = `user-${suffix}`;
+      }
+    } else if (token.startsWith('mock_jwt_studio_')) {
+      const suffix = token.replace('mock_jwt_studio_', '');
+      if (suffix) {
+        dynamicStudioId = suffix;
+      }
+    }
+
     return {
-      userId: isSuperAdmin ? 'admin-1' : 'user-demo-1',
+      userId: dynamicUserId,
       email: isSuperAdmin ? 'admin@pixmatch.ai' : 'alex@lumiere.com',
       role: isSuperAdmin ? UserRole.SUPER_ADMIN : UserRole.STUDIO_OWNER,
-      studioId: isSuperAdmin ? null : 'studio-demo-1',
+      studioId: dynamicStudioId,
       studioMemberRole: isSuperAdmin ? null : StudioMemberRole.OWNER,
     };
   }
