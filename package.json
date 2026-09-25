@@ -60,6 +60,10 @@
     "test": "npx tsx tests/phase2-pipeline.test.ts && npx tsx tests/phase2-hardening.test.ts && npx tsx tests/phase3-ai.test.ts && npx tsx tests/phase3-hardening.test.ts && npx tsx tests/phase4a-storage.test.ts && npx tsx tests/phase4a1-hardening.test.ts && npx tsx tests/phase4b-storage.test.ts && npx tsx tests/phase5-client-gallery.test.ts && npx tsx tests/phase6-gallery-management.test.ts && npx tsx tests/phase6-1-functional-qa.test.ts && npx tsx tests/phase6-2-production-readiness.test.ts && npx tsx tests/phase7-client-crm.test.ts && npx tsx tests/phase8-analytics.test.ts && npx tsx tests/phase8-1-production-audit.test.ts && npx tsx tests/phase9-billing.test.ts && npx tsx tests/phase10-admin-control-center.test.ts && npx tsx tests/phase11-email-notifications.test.ts && npx tsx tests/phase12-ai-photo-intelligence.test.ts && npx tsx tests/phase13-event-intelligence.test.ts && npx tsx tests/phase14-client-personalization.test.ts && npx tsx tests/phase15-copilot.test.ts && npx tsx tests/phase16-automation.test.ts && npx tsx tests/phase17-client-intelligence.test.ts && npx tsx tests/phase18-business-intelligence.test.ts && npx tsx tests/phase19-business-growth.test.ts && npx tsx tests/phase20-studio-operations.test.ts && npx tsx tests/phase21-contracts-proposals-booking.test.ts && npx tsx tests/phase22-studio-scheduling-calendar.test.ts && npx tsx tests/phase23-studio-production.test.ts && npx tsx tests/phase24-media-post-production.test.ts && npx tsx tests/phase25-client-proofing.test.ts && npx tsx tests/phase26-fulfillment.test.ts && npx tsx tests/phase26-fulfillment-hardening.test.ts && npx tsx tests/phase27-client-portal.test.ts && npx tsx tests/phase27.1-hardening.test.ts && npx tsx tests/phase28-client-communication.test.ts && npx tsx tests/phase29-crm.test.ts",
     "clean": "turbo run clean && rm -rf node_modules"
   },
+  "dependencies": {
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.3"
+  },
   "devDependencies": {
     "playwright": "^1.63.0",
     "prettier": "^3.5.3",
@@ -68,6 +72,6 @@
   },
   "packageManager": "npm@11.13.0",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0 <23.0.0"
   }
 }
