@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: starter
     region: singapore
-    buildCommand: npm install --include=dev && npm --workspace=@pixmatch/database run db:generate && npm --workspace=@pixmatch/api run build
+    buildCommand: npm install --include=dev && npm --workspace=@pixmatch/database run db:generate && npm --workspace=@pixmatch/database run build && npm --workspace=@pixmatch/storage run build && npm --workspace=@pixmatch/api run build
     startCommand: node apps/api/dist/server.js
     healthCheckPath: /api/health
     envVars:
